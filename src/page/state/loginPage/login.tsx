@@ -1,9 +1,7 @@
 import { useState } from "react";
 import { LockOutlined, UserOutlined } from "@ant-design/icons";
-import { Button, ConfigProvider, Space } from "antd";
+import { ConfigProvider, Space } from "antd";
 import { useRegisterStore } from "../../../atom/state/store/store";
-import { Link } from "react-router-dom";
-import axios from "axios";
 const Login = () => {
   const [show, setShow] = useState(false);
   const [userName, setUserName] = useState("");

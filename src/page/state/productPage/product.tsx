@@ -30,8 +30,7 @@ export default function ProductsPage() {
   const [items, setItems] = useState<ApiProduct[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [colors, setColors] = useState<Color[]>([]);
-  const [brand, setBrand] = useState([]);
-  const [kok] = useState();
+  const [_, setBrand] = useState([]);
 
   const [form, setForm] = useState({
     brandId: "",
