@@ -7,6 +7,8 @@ import Product from "./page/state/productPage/product"
 import SubCategories from "./page/state/subCategoriesPage/subCategories"
 import UserProfile from "./page/state/userProfilePage/userProfile"
 import Login from "./page/state/loginPage/login"
+import Color from "./page/state/color/color"
+import Account from "./page/state/account/account"
 
 const App = () => {
   const router = createBrowserRouter([
@@ -14,10 +16,7 @@ const App = () => {
       path: '/',
       element: <Layout />,
       children: [
-        {
-          index: true,
-          element: <Login />,
-        },
+       
         {
           path: 'cart',
           element: <Cart />
@@ -41,9 +40,21 @@ const App = () => {
         {
           path: 'userProfile',
           element: <UserProfile />
-        }
+        },
+        {
+          path: 'color',
+          element: <Color />
+        },
+        {
+          path: 'account',
+          element: <Account />
+        },
       ]
-    }
+    },
+     {
+          index: true,
+          element: <Login />,
+        },
   ])
   return (
     <div>
