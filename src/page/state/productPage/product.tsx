@@ -31,6 +31,7 @@ export default function ProductsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [colors, setColors] = useState<Color[]>([]);
   const [brand, setBrand] = useState([]);
+  const [kok] = useState();
 
   const [form, setForm] = useState({
     brandId: "",
