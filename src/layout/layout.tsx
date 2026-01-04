@@ -9,9 +9,7 @@ import '../App.css';
 const Layout = () => {
   const [, setAuth] = useAtom(authAtom);
   const navigate = useNavigate();
-
   const token = localStorage.getItem('token');
-
   let user = null;
   try {
     const storedUser = localStorage.getItem('user');
@@ -19,17 +17,9 @@ const Layout = () => {
   } catch (e) {
     localStorage.removeItem('user');
   }
-
   const themeContext = useContext(ThemeContext);
   if (!themeContext) return null;
-
   const { theme, toggleTheme } = themeContext;
-
-  const handleLogout = () => {
-    setAuth({ token: null, user: null });
-    localStorage.removeItem('auth');
-    navigate('/');
-  };
 
   const linkClass =
     'block px-4 py-3 rounded-lg font-medium transition-all hover:translate-x-1 ' +
@@ -125,7 +115,11 @@ const Layout = () => {
           </nav>
 
           <button
-            onClick={handleLogout}
+            onClick={() => {
+                  localStorage.removeItem('token');
+                  localStorage.removeItem('user');
+                  window.location.reload();
+                }}
             className="mt-10 w-full bg-red-500 text-white py-3 rounded-lg hover:bg-red-600 transition font-semibold"
           >
             Logout

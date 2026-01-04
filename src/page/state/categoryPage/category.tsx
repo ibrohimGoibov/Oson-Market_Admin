@@ -1,105 +1,144 @@
-import { useState } from "react";
+import axios from "axios";
+import { useEffect, useState } from "react";
 
-const TABS = ["Categories", "Brands", "Banners"];
+type SubCategory = {
+  id: number;
+  subCategoryName: string;
+};
 
-export default function CategoriesPage() {
-  const [activeTab, setActiveTab] = useState("Categories");
-  const [page, setPage] = useState(2);
+type CategoryType = {
+  id: number;
+  categoryName: string;
+  categoryImage: string;
+  subCategories: SubCategory[];
+};
 
-  const items = Array.from({ length: 12 });
+const Category = () => {
+  const [data, setData] = useState<CategoryType[]>([]);
+  const [file, setFile] = useState<File | null>(null);
+  const [name, setName] = useState("");
+  
+
+  async function getCategories(): Promise<void> {
+    const response = await axios.get(
+      "https://store-api.softclub.tj/Category/get-categories"
+    );
+    setData(response.data.data);
+  }
+
+  async function deleteCategories(id: number) {
+    await axios.delete(
+      `https://store-api.softclub.tj/Category/delete-category?id=${id}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+    getCategories();
+  }
+
+  async function addCategory() {
+    if (!name || !file) return;
+    const formData = new FormData();
+    formData.append("categoryName", name);
+    formData.append("categoryImage", file);
+
+    await axios.post(
+      "https://store-api.softclub.tj/Category/add-category",
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    );
+
+    setName("");
+    setFile(null);
+    getCategories();
+  }
+
+  useEffect(() => {
+    getCategories();
+  }, []);
 
   return (
-    <div className="min-h-screen text-white p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex gap-2">
-          {TABS.map(tab => (
-            <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded text-sm ${
-                activeTab === tab
-                  ? "bg-white text-black"
-                  : "text-zinc-400"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
-
-        <button className="bg-blue-600 px-4 py-2 rounded flex items-center gap-2">
-          <span className="text-lg">＋</span> Add new
-        </button>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+        gap: "24px",
+        padding: "40px",
+        background: "#f4f6f8",
+      }}
+    >
+      <div style={{ gridColumn: "1 / -1", display: "flex", gap: "12px" }}>
+        <input
+          type="file"
+          onChange={(e) =>
+            setFile(e.target.files ? e.target.files[0] : null)
+          }
+        />
+        <input
+          type="text"
+          value={name}
+          placeholder="Category Name"
+          onChange={(e) => setName(e.target.value)}
+        />
+        <button onClick={addCategory}>Add</button>
       </div>
 
-      <div className="mb-6">
-        <div className="relative w-72">
-          <input
-            placeholder="Search..."
-            className="w-full bg-white text-black rounded px-4 py-2 pr-10"
+      {data.map((e) => (
+        <div
+          key={e.id}
+          style={{
+            background: "#ffffff",
+            borderRadius: "20px",
+            overflow: "hidden",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.1)",
+          }}
+        >
+          <img
+            src={`https://store-api.softclub.tj/images/${e.categoryImage}`}
+            alt={e.categoryName}
+            style={{
+              width: "100%",
+              height: "200px",
+              objectFit: "cover",
+            }}
           />
-          <span className="absolute right-3 top-2.5 text-zinc-500">🔍</span>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-4 gap-6">
-        <div className="col-span-3 grid grid-cols-4 gap-6">
-          {items.map((_, i) => (
-            <div
-              key={i}
-              className="relative h-28 border border-zinc-800 rounded flex items-center justify-center"
-            >
-              
-              <button className="absolute top-2 right-2 text-blue-500">
-                ✎
-              </button>
+          <div style={{ padding: "20px" }}>
+            <h2 style={{ fontSize: "22px", marginBottom: "12px" }}>
+              {e.categoryName}
+            </h2>
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
+              {e.subCategories.map((sub) => (
+                <span
+                  key={sub.id}
+                  style={{
+                    background: "#eef2ff",
+                    color: "#3730a3",
+                    padding: "6px 12px",
+                    borderRadius: "999px",
+                    fontSize: "13px",
+                  }}
+                >
+                  {sub.subCategoryName}
+                </span>
+              ))}
             </div>
-          ))}
-        </div>
+          </div>
 
-        <div className="space-y-4">
-          {Array.from({ length: 3 }).map((_, i) => (
-            <div
-              key={i}
-              className="bg-white text-black rounded p-6 flex flex-col items-center gap-3"
-            >
-              <div className="text-4xl">📷</div>
-              <span>Camera</span>
-              <button className="absolute mt-1 ml-32 text-blue-600">
-                ✎
-              </button>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex justify-between items-center mt-10 text-sm text-zinc-400">
-        <div className="flex items-center gap-2">
-          <button className="w-8 h-8 bg-white text-black rounded">
-            ←
-          </button>
-          {[1, 2, 3, 4, 5, 6].map(n => (
-            <button
-              key={n}
-              onClick={() => setPage(n)}
-              className={`w-8 h-8 rounded ${
-                page === n
-                  ? "bg-white text-black"
-                  : "text-zinc-400"
-              }`}
-            >
-              {n}
-            </button>
-          ))}
-          <span>…</span>
-          <span>24</span>
-          <button className="w-8 h-8 bg-white text-black rounded">
-            →
+          <button style={{ padding: "16px", color: "red" }} onClick={() => deleteCategories(e.id)}>
+            Delete
           </button>
         </div>
-
-        <div>274 Results</div>
-      </div>
+      ))}
     </div>
   );
-}
+};
+
+export default Category;

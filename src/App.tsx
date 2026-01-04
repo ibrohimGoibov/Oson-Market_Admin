@@ -9,6 +9,7 @@ import UserProfile from "./page/state/userProfilePage/userProfile"
 import Login from "./page/state/loginPage/login"
 import Color from "./page/state/color/color"
 import Account from "./page/state/account/account"
+import Apps from "./Apps"
 
 const App = () => {
   const router = createBrowserRouter([
@@ -49,15 +50,19 @@ const App = () => {
           path: 'account',
           element: <Account />
         },
+        {
+          path: 'app',
+          element: <Apps />
+        }
       ]
     },
      {
-          index: true,
-          element: <Login />,
-        },
+        index: true,
+        element: <Login />,
+      },
   ])
   return (
-    <div>
+    <div> 
       <RouterProvider router={router} />
     </div>
   )
