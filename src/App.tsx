@@ -10,6 +10,10 @@ import Login from "./page/state/loginPage/login"
 import Color from "./page/state/color/color"
 import Account from "./page/state/account/account"
 import Apps from "./Apps"
+import Brand from "./page/state/brand/brand"
+import Error from "./page/state/error/error"
+import Loader from "./page/state/loader/loader"
+import AboutProduct from "./page/state/aboutProduct/aboutProduct"
 
 const App = () => {
   const router = createBrowserRouter([
@@ -53,6 +57,22 @@ const App = () => {
         {
           path: 'app',
           element: <Apps />
+        },
+        {
+          path: 'brand',
+          element: <Brand />
+        },
+        {
+          path: 'error',
+          element: <Error />
+        },
+        {
+          path: 'loader',
+          element: <Loader />
+        },
+        {
+          path: 'aboutProduct/:id',
+          element: <AboutProduct />
         }
       ]
     },

@@ -81,6 +81,7 @@ const Layout = () => {
             <Link to="/subCategories" className={linkClass}>SubCategories</Link>
             <Link to="/product" className={linkClass}>Product</Link>
             <Link to="/color" className={linkClass}>Color</Link>
+            <Link to={'/brand'} className={linkClass}>Brand</Link>
           </nav>
 
           <button

@@ -1,158 +1,451 @@
-import axios from "axios"
-import { useEffect, useState } from "react"
-import { Modal } from "antd"
+import { useEffect, useState } from "react";
+import { MdDelete, MdOutlineAddCircle } from "react-icons/md";
+import { AiFillInfoCircle } from "react-icons/ai";
+import { Modal, Space } from "antd";
+import { useNavigate } from "react-router-dom";
+import Error from "../error/error";
+import Loader from "../loader/loader";
+type Product = {
+  id: number;
+  productName: string;
+  price: number;
+  discountPrice: number;
+  image: string;
+};
+const Product = () => {
+  const [images, setImages] = useState<File[]>([]);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [modal, showModal] = useState<boolean>(false);
+  const [brands, setBrands] = useState<any>(null);
+  const [brandId, setBrandId] = useState<number | undefined>();
+  const [productName, setProductName] = useState<string>("");
+  const [productDesc, setProductDesc] = useState<string>("");
+  const [productQuantity, setProductQuantity] = useState<number>();
+  const [subCategory, setSubCategory] = useState<any>();
+  const [subCategId, setSubCategId] = useState<number | undefined>();
+  const [colors, setColors] = useState<any>(null);
+  const [colorId, setColorId] = useState<number | undefined>();
+  const [productPrice, setProductPrice] = useState<number>();
+  const [editModal, setEditModal] = useState(false);
+  const [editId, setEditId] = useState<number | null>(null);
+  const navigate = useNavigate();
+  const addProduct = async () => {
+    try {
+      if (
+        images.length == 0 ||
+        brandId == null ||
+        colorId == null ||
+        subCategId == null ||
+        !productName ||
+        !productDesc ||
+        productQuantity == null ||
+        productPrice == null
+      ) {
+        alert("Заполни все обязательные поля");
+        return;
+      }
+      const formData = new FormData();
+      images.forEach((file) => {
+        formData.append("Images", file);
+      });
+      formData.append("BrandId", brandId.toString());
+      formData.append("ColorId", colorId.toString());
+      formData.append("SubCategoryId", subCategId.toString());
+      formData.append("ProductName", productName);
+      formData.append("Description", productDesc);
+      formData.append("Quantity", productQuantity.toString());
+      formData.append("Price", productPrice.toString());
+      formData.append("Code", Date.now().toString());
+      formData.append("HasDiscount", "false");
+      formData.append("DiscountPrice", "0");
+      const res = await fetch(
+        "https://store-api.softclub.tj/Product/add-product",
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+          },
+          body: formData,
+        }
+      );
+      if (!res.ok) {
+        const text = await res.text();
+        console.error("SERVER:", text);
+      }
+      showModal(false);
+      getProducts();
+      setImages([]);
+      setProductName("");
+      setProductDesc("");
+      setProductQuantity(undefined);
+      setProductPrice(undefined);
+      setBrandId(undefined);
+      setColorId(undefined);
+      setSubCategId(undefined);
+    } catch (err) {
+      console.error(err);
+      alert("Ошибка при добавлении продукта");
+    }
+  };
+  const editProduct = async () => {
+    if (
+      editId == null ||
+      brandId == null ||
+      colorId == null ||
+      subCategId == null ||
+      !productName ||
+      !productDesc ||
+      productQuantity == null ||
+      productPrice == null
+    ) {
+      alert("Заполни все поля");
+      return;
+    }
+    const url =
+      `https://store-api.softclub.tj/Product/update-product` +
+      `?Id=${editId}` +
+      `&BrandId=${brandId}` +
+      `&ColorId=${colorId}` +
+      `&ProductName=${productName}` +
+      `&Description=${productDesc}` +
+      `&Quantity=${productQuantity}` +
+      `&Code=${Date.now()}` +
+      `&Price=${productPrice}` +
+      `&HasDiscount=false` +
+      `&SubCategoryId=${subCategId}`;
+    const res = await fetch(url, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${localStorage.getItem("token")}`,
+      },
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error(text);
+      alert("Ошибка при редактировании");
+      return;
+    }
+    useEffect(() => {
+      if (brands?.length == 1) setBrandId(brands[0].id);
+    }, [brands]);
+    useEffect(() => {
+      if (colors?.length == 1) setColorId(colors[0].id);
+    }, [colors]);
+    useEffect(() => {
+      if (subCategory?.length == 1) setSubCategId(subCategory[0].id);
+    }, [subCategory]);
+    setEditModal(false);
+    getProducts();
+  };
+  const openEdit = (p: any) => {
+    setEditId(p.id);
+    setBrandId(p.brandId);
+    setColorId(p.colorId);
+    setSubCategId(p.subCategoryId);
+    setProductName(p.productName);
+    setProductDesc(p.description);
+    setProductQuantity(p.quantity);
+    setProductPrice(p.price);
+    setEditModal(true);
+  };
 
-type ApiProduct = {
-  id: number
-  productName: string
-  image: string
-  color: string
-  price: number
-  hasDiscount: boolean
-  discountPrice: number
-  quantity: number
-  categoryName: string
-  checked?: boolean
-}
-
-type ApiResponse = {
-  data: {
-    products: ApiProduct[]
+  async function deleteProduct(id: number | string) {
+    try {
+      await fetch(
+        `https://store-api.softclub.tj/Product/delete-product?id=${id}`,
+        {
+          method: "DELETE",
+          headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+        }
+      );
+      getProducts();
+    } catch (er) {
+      console.error(er);
+    }
   }
-}
-
-type Color = {
-  id: number
-  colorName: string
-}
-
-export default function ProductsPage() {
-  const [items, setItems] = useState<ApiProduct[]>([])
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [colors, setColors] = useState<Color[]>([])
-  const [_, setBrand] = useState([])
-  const [form, setForm] = useState({
-    brandId: "",
-    colorId: "",
-    productName: "",
-    description: "",
-    quantity: "",
-    weight: "",
-    size: "",
-    code: "",
-    price: "",
-    hasDiscount: false,
-    discountPrice: "",
-    subCategoryId: ""
-  })
-  const [images, setImages] = useState<File[]>([])
-
-  async function getProduct() {
-    const { data } = await axios.get<ApiResponse>("https://store-api.softclub.tj/Product/get-products")
-    setItems(data.data.products)
+  const getBrands = async () => {
+    try {
+      const res = await fetch("https://store-api.softclub.tj/Brand/get-brands");
+      const json = await res.json();
+      setBrands(json.data);
+    } catch (err) {
+      setError("Ошибка загрузки товаров");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const getSubCategs = async () => {
+    try {
+      const res = await fetch(
+        "https://store-api.softclub.tj/SubCategory/get-sub-category"
+      );
+      const json = await res.json();
+      setSubCategory(json.data);
+    } catch (err) {
+      setError("Ошибка загрузки товаров");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const getColors = async () => {
+    try {
+      const res = await fetch("https://store-api.softclub.tj/Color/get-colors");
+      const json = await res.json();
+      setColors(json.data);
+    } catch (err) {
+      setError("Ошибка загрузки товаров");
+    } finally {
+      setLoading(false);
+    }
+  };
+  const getProducts = async () => {
+    try {
+      const res = await fetch(
+        "https://store-api.softclub.tj/Product/get-products"
+      );
+      const json = await res.json();
+      setProducts(json.data.products);
+    } catch (err) {
+      setError("Ошибка загрузки товаров");
+    } finally {
+      setLoading(false);
+    }
+  };
+  function CheckLogin() {
+    if (!localStorage.getItem("token")) navigate("/login");
   }
-
-  async function getColor() {
-    const { data } = await axios.get("https://store-api.softclub.tj/Color/get-colors")
-    setColors(data.data)
-  }
-
-  async function getBrand() {
-    const res = await axios.get("https://store-api.softclub.tj/Brand/get-brands")
-    setBrand(res.data.data.brand)
-  }
-
-  async function deleteProduct(id: number) {
-    await axios.delete(`https://store-api.softclub.tj/Product/delete-product?id=${id}`, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-    })
-    getProduct()
-  }
-
-  async function addProduct() {
-    const formData = new FormData()
-    images.forEach(f => formData.append("Images", f))
-    Object.entries(form).forEach(([k, v]) => formData.append(k, String(v)))
-    await axios.post("https://store-api.softclub.tj/Product/add-product", formData, {
-      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` }
-    })
-    setIsModalOpen(false)
-    getProduct()
-  }
-
-  const handleChange = (e: any) => {
-    const { name, value } = e.target
-    setForm(p => ({ ...p, [name]: name === "hasDiscount" ? value === "true" : value }))
-  }
-
-  const handleFiles = (e: any) => {
-    if (!e.target.files) return
-    setImages(Array.from(e.target.files))
-  }
-
   useEffect(() => {
-    getProduct()
-    getColor()
-    getBrand()
-  }, [])
-
+    getProducts();
+    CheckLogin();
+    getBrands();
+    getColors();
+    getSubCategs();
+  }, []);
+  useEffect(() => {
+    if (!localStorage.getItem("token")) navigate("/login");
+  }, []);
   return (
-    <div className="min-h-screen p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-xl font-medium">Products</h1>
-        <button onClick={() => setIsModalOpen(true)} className="bg-blue-600 text-white px-4 py-2 rounded">
-          Add product
-        </button>
+    <div className="max-w-375 m-auto">
+      <div className="flex justify-end">
+        <div
+          onClick={() => showModal(true)}
+          className="flex items-center bg-blue-500 px-4 py-3 mb-5 rounded-2xl gap-1 justify-center"
+        >
+          <MdOutlineAddCircle /> <span>Добавить</span>
+        </div>
       </div>
-
-      <Modal title="Add Product" open={isModalOpen} onOk={addProduct} onCancel={() => setIsModalOpen(false)}>
-        <div className="flex flex-col gap-3">
-          <input type="file" multiple onChange={handleFiles} />
-          <input name="brandId" value={form.brandId} onChange={handleChange} placeholder="BrandId" />
-          <select name="colorId" value={form.colorId} onChange={handleChange}>
-            <option value="">Select color</option>
-            {colors.map(c => (
-              <option key={c.id} value={c.id}>{c.colorName}</option>
+      <div>
+        {loading ? (
+          <Loader />
+        ) : error ? (
+          <Error />
+        ) : (
+          <div className="grid  grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6">
+            {products.map((p) => {
+              const discount = Math.round(
+                ((p.price - p.discountPrice) / p.price) * 100
+              );
+              return (
+                <div
+                  key={p.id}
+                  className="max-w-70 w-full mx-auto relative bg-white dark:bg-slate-900 rounded-2xl shadow hover:shadow-2xl transition p-4"
+                >
+                  <AiFillInfoCircle
+                    onClick={() => navigate(`/aboutProduct/${p.id}`)}
+                    size={24}
+                  />
+                  {discount && (
+                    <span className="absolute top-6 right-12 bg-red-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                      {discount}%
+                    </span>
+                  )}
+                  <img
+                    src={`https://store-api.softclub.tj/images/${p.image}`}
+                    className="h-48 w-full object-contain "
+                  />
+                  <p className="mt-3 text-sm text-yellow-500">★ 4.8 (26)</p>
+                  <h2 className="font-semibold mt-1 truncate">
+                    {p.productName}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className="text-red-500 font-bold">{p.price} $</span>
+                    <span className="line-through text-gray-400 text-sm">
+                      {p.discountPrice} $
+                    </span>
+                  </div>
+                  <Space>
+                    <button
+                      onClick={() => deleteProduct(p.id)}
+                      className="flex items-center text-center m-auto justify-center gap-1 px-3 mt-4 w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded-lg transition"
+                    >
+                      <MdDelete /> <span>Удалить</span>
+                    </button>
+                    <button
+                      onClick={() => openEdit(p)}
+                      className="flex items-center text-center m-auto justify-center gap-1 mt-4 w-full bg-yellow-500 hover:bg-yellow-600 text-white py-2 px-3 rounded-lg transition"
+                    >
+                      Edit user
+                    </button>
+                  </Space>
+                </div>
+              );
+            })}
+          </div>
+        )}
+        <Modal
+          open={editModal}
+          onOk={editProduct}
+          onCancel={() => setEditModal(false)}
+          title="Edit product"
+          okType="link"
+        >
+          <select
+            value={brandId}
+            onChange={(e) => setBrandId(Number(e.target.value))}
+            className="mx-2 my-3 w-full border p-2 rounded"
+          >
+            {brands?.map((e: any) => (
+              <option key={e.id} value={e.id}>
+                {e.brandName}
+              </option>
             ))}
           </select>
-          <input name="productName" value={form.productName} onChange={handleChange} placeholder="ProductName" />
-          <input name="description" value={form.description} onChange={handleChange} placeholder="Description" />
-          <input name="quantity" value={form.quantity} onChange={handleChange} placeholder="Quantity" />
-          <input name="price" value={form.price} onChange={handleChange} placeholder="Price" />
-          <select name="hasDiscount" value={String(form.hasDiscount)} onChange={handleChange}>
-            <option value="false">No Discount</option>
-            <option value="true">Has Discount</option>
-          </select>
-          {form.hasDiscount && (
-            <input name="discountPrice" value={form.discountPrice} onChange={handleChange} placeholder="DiscountPrice" />
-          )}
-          <input name="subCategoryId" value={form.subCategoryId} onChange={handleChange} placeholder="SubCategoryId" />
-        </div>
-      </Modal>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {items.map(p => (
-          <div key={p.id} className="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
-            <img src={`https://store-api.softclub.tj/images/${p.image}`} className="w-full h-40 object-cover rounded" />
-            <h2 className="font-medium">{p.productName}</h2>
-            <p className="text-sm text-gray-500">{p.categoryName}</p>
-            <p className="text-sm">{p.quantity === 0 ? "Out of stock" : `${p.quantity} in stock`}</p>
-            <div className="flex items-center gap-2">
-              {p.hasDiscount ? (
-                <>
-                  <span className="line-through text-gray-400">${p.price}</span>
-                  <span className="text-red-600 font-medium">${p.discountPrice}</span>
-                </>
-              ) : (
-                <span className="font-medium">${p.price}</span>
-              )}
-            </div>
-            <button onClick={() => deleteProduct(p.id)} className="mt-2 text-red-600">
-              Delete
-            </button>
-          </div>
-        ))}
+          <select
+            value={colorId}
+            onChange={(e) => setColorId(Number(e.target.value))}
+            className="mx-2 my-3 w-full border p-2 rounded"
+          >
+            {colors?.map((e: any) => (
+              <option key={e.id} value={e.id}>
+                {e.colorName}
+              </option>
+            ))}
+          </select>
+
+          <input
+            type="text"
+            value={productName}
+            onChange={(e) => setProductName(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+
+          <input
+            type="text"
+            value={productDesc}
+            onChange={(e) => setProductDesc(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+
+          <input
+            type="number"
+            value={productQuantity}
+            onChange={(e: any) => setProductQuantity(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+
+          <input
+            type="number"
+            value={productPrice}
+            onChange={(e: any) => setProductPrice(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+
+          <select
+            value={subCategId}
+            onChange={(e) => setSubCategId(Number(e.target.value))}
+            className="mx-2 my-3 w-full border p-2 rounded"
+          >
+            {subCategory?.map((e: any) => (
+              <option key={e.id} value={e.id}>
+                {e.subCategoryName}
+              </option>
+            ))}
+          </select>
+        </Modal>
+
+        <Modal
+          open={modal}
+          onOk={addProduct}
+          onCancel={() => showModal(false)}
+          title="Add product"
+          okType="link"
+        >
+          <input
+            type="file"
+            multiple
+            onChange={(e) => setImages(Array.from(e.target.files || []))}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+          <select
+            value={brandId}
+            onChange={(e) => setBrandId(Number(e.target.value))}
+            className="mx-2 my-3 w-full border p-2 rounded"
+          >
+            {brands?.map((e: any) => (
+              <option key={e.id} value={e.id}>
+                {e.brandName}
+              </option>
+            ))}
+          </select>
+          <select
+            value={colorId}
+            onChange={(e) => setColorId(Number(e.target.value))}
+            className="mx-2 my-3 w-full border p-2 rounded"
+          >
+            {colors?.map((e: any) => (
+              <option key={e.id} value={e.id}>
+                {e.colorName}
+                <div className="flex items-center gap-4">
+                  <span className="text-lg font-medium text-gray-700"></span>
+                </div>
+              </option>
+            ))}
+          </select>
+          <input
+            type="text"
+            value={productName}
+            placeholder="Product name"
+            onChange={(e) => setProductName(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+          <input
+            type="text"
+            value={productDesc}
+            placeholder="Product description"
+            onChange={(e) => setProductDesc(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+          <input
+            type="number"
+            value={productQuantity}
+            placeholder="Product Quantity"
+            onChange={(e: any) => setProductQuantity(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+          <input
+            type="number"
+            value={productPrice}
+            placeholder="Product Price"
+            onChange={(e: any) => setProductPrice(e.target.value)}
+            className="p-2 w-full border rounded mx-2 my-3"
+          />
+          <select
+            value={subCategId}
+            onChange={(e) => setSubCategId(Number(e.target.value))}
+            className="mx-2 my-3 w-full border p-2 rounded"
+          >
+            {subCategory?.map((e: any) => (
+              <option key={e.id} value={e.id}>
+                {e.subCategoryName}
+              </option>
+            ))}
+          </select>
+        </Modal>
       </div>
     </div>
-  )
-}
+  );
+};
+export default Product;

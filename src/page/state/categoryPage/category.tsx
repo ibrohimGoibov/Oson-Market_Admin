@@ -1,29 +1,31 @@
-import axios from "axios";
-import { useEffect, useState } from "react";
+import axios from "axios"
+import { useEffect, useState } from "react"
 
 type SubCategory = {
-  id: number;
-  subCategoryName: string;
-};
+  id: number
+  subCategoryName: string
+}
 
 type CategoryType = {
-  id: number;
-  categoryName: string;
-  categoryImage: string;
-  subCategories: SubCategory[];
-};
+  id: number
+  categoryName: string
+  categoryImage: string
+  subCategories: SubCategory[]
+}
 
 const Category = () => {
-  const [data, setData] = useState<CategoryType[]>([]);
-  const [file, setFile] = useState<File | null>(null);
-  const [name, setName] = useState("");
-  
+  const [data, setData] = useState<CategoryType[]>([])
+  const [file, setFile] = useState<File | null>(null)
+  const [name, setName] = useState("")
+  const [editId, setEditId] = useState<number | null>(null)
+  const [editName, setEditName] = useState("")
+  const [editFile, setEditFile] = useState<File | null>(null)
 
-  async function getCategories(): Promise<void> {
-    const response = await axios.get(
+  async function getCategories() {
+    const res = await axios.get(
       "https://store-api.softclub.tj/Category/get-categories"
-    );
-    setData(response.data.data);
+    )
+    setData(res.data.data)
   }
 
   async function deleteCategories(id: number) {
@@ -34,15 +36,15 @@ const Category = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       }
-    );
-    getCategories();
+    )
+    getCategories()
   }
 
   async function addCategory() {
-    if (!name || !file) return;
-    const formData = new FormData();
-    formData.append("categoryName", name);
-    formData.append("categoryImage", file);
+    if (!name || !file) return
+    const formData = new FormData()
+    formData.append("categoryName", name)
+    formData.append("categoryImage", file)
 
     await axios.post(
       "https://store-api.softclub.tj/Category/add-category",
@@ -52,16 +54,39 @@ const Category = () => {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
         },
       }
-    );
+    )
 
-    setName("");
-    setFile(null);
-    getCategories();
+    setName("")
+    setFile(null)
+    getCategories()
+  }
+
+  async function editCategory() {
+    if (!editId || !editName) return
+    const formData = new FormData()
+    formData.append("id", String(editId))
+    formData.append("categoryName", editName)
+    if (editFile) formData.append("categoryImage", editFile)
+
+    await axios.put(
+      "https://store-api.softclub.tj/Category/update-category",
+      formData,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+      }
+    )
+
+    setEditId(null)
+    setEditName("")
+    setEditFile(null)
+    getCategories()
   }
 
   useEffect(() => {
-    getCategories();
-  }, []);
+    getCategories()
+  }, [])
 
   return (
     <div
@@ -76,7 +101,7 @@ const Category = () => {
       <div style={{ gridColumn: "1 / -1", display: "flex", gap: "12px" }}>
         <input
           type="file"
-          onChange={(e) =>
+          onChange={e =>
             setFile(e.target.files ? e.target.files[0] : null)
           }
         />
@@ -84,12 +109,12 @@ const Category = () => {
           type="text"
           value={name}
           placeholder="Category Name"
-          onChange={(e) => setName(e.target.value)}
+          onChange={e => setName(e.target.value)}
         />
         <button onClick={addCategory}>Add</button>
       </div>
 
-      {data.map((e) => (
+      {data.map(e => (
         <div
           key={e.id}
           style={{
@@ -101,44 +126,52 @@ const Category = () => {
         >
           <img
             src={`https://store-api.softclub.tj/images/${e.categoryImage}`}
-            alt={e.categoryName}
-            style={{
-              width: "100%",
-              height: "200px",
-              objectFit: "cover",
-            }}
+            style={{ width: "100%", height: "200px", objectFit: "cover" }}
           />
 
           <div style={{ padding: "20px" }}>
-            <h2 style={{ fontSize: "22px", marginBottom: "12px" }}>
-              {e.categoryName}
-            </h2>
-
-            <div style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}>
-              {e.subCategories.map((sub) => (
-                <span
-                  key={sub.id}
-                  style={{
-                    background: "#eef2ff",
-                    color: "#3730a3",
-                    padding: "6px 12px",
-                    borderRadius: "999px",
-                    fontSize: "13px",
+            {editId === e.id ? (
+              <>
+                <input
+                  value={editName}
+                  onChange={ev => setEditName(ev.target.value)}
+                />
+                <input
+                  type="file"
+                  onChange={ev =>
+                    setEditFile(
+                      ev.target.files ? ev.target.files[0] : null
+                    )
+                  }
+                />
+                <button onClick={editCategory}>Save</button>
+              </>
+            ) : (
+              <>
+                <h2>{e.categoryName}</h2>
+                <button
+                  onClick={() => {
+                    setEditId(e.id)
+                    setEditName(e.categoryName)
                   }}
                 >
-                  {sub.subCategoryName}
-                </span>
+                  Edit
+                </button>
+              </>
+            )}
+
+            <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              {e.subCategories.map(sub => (
+                <span key={sub.id}>{sub.subCategoryName}</span>
               ))}
             </div>
           </div>
 
-          <button style={{ padding: "16px", color: "red" }} onClick={() => deleteCategories(e.id)}>
-            Delete
-          </button>
+          <button onClick={() => deleteCategories(e.id)}>Delete</button>
         </div>
       ))}
     </div>
-  );
-};
+  )
+}
 
-export default Category;
+export default Category
